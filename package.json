@@ -1,6 +1,6 @@
 {
   "name": "findchange",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A React state watcher with a separate debug window for real-time state tracing during development",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
