@@ -39,7 +39,7 @@
   "bugs": {
     "url": "https://github.com/NotuTeam/FindChange/issues"
   },
-  "homepage": "https://github.com/NotuTeam/FindChange#readme",
+  "homepage": "https://findchange.notu.dev",
   "license": "MIT",
   "author": "",
   "peerDependencies": {

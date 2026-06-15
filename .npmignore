@@ -28,3 +28,7 @@ pnpm-lock.yaml
 # CI / docs
 *.md
 LICENSE
+
+# Doc
+site_doc
+layout_guidence.md

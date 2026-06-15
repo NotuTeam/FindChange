@@ -25,3 +25,7 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Doc
+site_doc
+layout_guidence.md
