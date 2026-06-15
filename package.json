@@ -34,12 +34,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/swula/findchange.git"
+    "url": "git+https://github.com/NotuTeam/FindChange.git"
   },
   "bugs": {
-    "url": "https://github.com/swula/findchange/issues"
+    "url": "https://github.com/NotuTeam/FindChange/issues"
   },
-  "homepage": "https://github.com/swula/findchange#readme",
+  "homepage": "https://github.com/NotuTeam/FindChange#readme",
   "license": "MIT",
   "author": "",
   "peerDependencies": {
