@@ -1,0 +1,30 @@
+# Everything not needed in the published package.
+# The package.json "files" field already whitelists "dist",
+# but this serves as an explicit safety net.
+
+# Source (compiled output is in dist/)
+src
+
+# Examples
+example
+
+# Config files
+tsup.config.ts
+tsconfig.json
+
+# Dev metadata
+.gitignore
+.gitattributes
+.npmignore
+.github
+.vscode
+.idea
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# CI / docs
+*.md
+LICENSE
