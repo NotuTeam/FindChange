@@ -46,6 +46,7 @@ export default function App() {
   useDebugState('stepHistory', history);
 
   const update = (field: keyof FormData, value: string | boolean) => {
+    console.log('[form] update', field, '->', value);
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -74,17 +75,25 @@ export default function App() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const valid = Object.keys(newErrors).length === 0;
+    if (valid) {
+      console.info('[validation] step', step, 'passed');
+    } else {
+      console.warn('[validation] step', step, 'has errors:', newErrors);
+    }
+    return valid;
   };
 
   const next = () => {
     if (!validateStep()) return;
     setHistory((prev) => [...prev, { step, timestamp: Date.now() }]);
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    console.debug('[nav] next -> step', step + 1);
   };
 
   const back = () => {
     setStep((s) => Math.max(s - 1, 0));
+    console.debug('[nav] back -> step', step - 1);
   };
 
   const reset = () => {
@@ -93,11 +102,19 @@ export default function App() {
     setErrors({});
     setHistory([]);
     setSubmitted(false);
+    console.info('[form] reset');
   };
 
   const submit = () => {
     setHistory((prev) => [...prev, { step, timestamp: Date.now() }]);
     setSubmitted(true);
+    console.log('[form] submit', { fullName: form.fullName, email: form.email, plan: form.plan });
+    console.table({ plan: form.plan, newsletter: form.newsletter });
+  };
+
+  // Demonstrate error capture
+  const triggerErrorDemo = () => {
+    console.error('[demo] simulated error', new Error('Something went wrong!'));
   };
 
   return (
@@ -105,13 +122,14 @@ export default function App() {
       <h1>Multi-Step Registration</h1>
       <p className="subtitle">
         Demo form for <code>findchange</code>. Click the floating <strong>Debug</strong> button
-        (bottom-right) to open the debug window and watch states change in real-time.
+        (bottom-right) to open the debug window. It now has two tabs:
+        <strong> Watcher</strong> (state) and <strong>Console</strong> (captured logs).
       </p>
 
       <div className="hint">
-        💡 Tip: Fill the form, navigate between steps, and watch the <code>form</code>,{' '}
-        <code>currentStep</code>, <code>errors</code>, and <code>stepHistory</code> states update
-        live in the separate debug window.
+        Tip: Fill the form, navigate between steps, and switch between the Watcher and Console
+        tabs in the debug window. The Console tab shows every <code>console.log</code>,{' '}
+        <code>warn</code>, <code>error</code>, <code>table</code> etc. with timestamp and file location.
       </div>
 
       <div className="card">
@@ -300,6 +318,15 @@ export default function App() {
                     <span className="key">Notes</span>
                     <span className="val">{form.notes || '-'}</span>
                   </div>
+                </div>
+                <div style={{ marginTop: 12, marginBottom: 4 }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={triggerErrorDemo}
+                    style={{ width: '100%' }}
+                  >
+                    Trigger Error Demo
+                  </button>
                 </div>
               </>
             )}

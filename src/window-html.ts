@@ -1,4 +1,5 @@
 import { CHANNEL_NAME, POST_MESSAGE_SOURCE } from './constants';
+import { debugStore } from './store';
 
 const stringifyFn = function(value: unknown): string {
   const seen = new WeakSet<object>();
@@ -35,17 +36,19 @@ export function getDebugWindowHtml(): string {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: #1e1e1e;
     color: #d4d4d4;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
   }
   .header {
-    position: sticky;
-    top: 0;
     background: #252526;
     border-bottom: 1px solid #3c3c3c;
-    padding: 12px 16px;
+    padding: 10px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     z-index: 100;
+    flex-shrink: 0;
   }
   .header h1 { font-size: 14px; font-weight: 600; margin: 0; }
   .status {
@@ -56,7 +59,53 @@ export function getDebugWindowHtml(): string {
     color: #7ee787;
   }
   .status.disconnected { background: #5a2d2d; color: #ff7b72; }
-  .content { padding: 8px; }
+
+  /* Tab bar */
+  .tabs {
+    display: flex;
+    background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #858585;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+  .tab:hover { color: #d4d4d4; }
+  .tab.active {
+    color: #fff;
+    border-bottom-color: #0e639c;
+  }
+  .tab-badge {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    background: #3c3c3c;
+    color: #ccc;
+    min-width: 18px;
+    text-align: center;
+  }
+  .tab.hidden { display: none; }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: none;
+  }
+  .content.active { display: block; }
+
+  /* Watcher styles */
   .empty {
     text-align: center;
     padding: 40px 20px;
@@ -130,15 +179,144 @@ export function getDebugWindowHtml(): string {
     display: inline-block;
     flex-shrink: 0;
   }
+
+  /* Console logger styles */
+  .console-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    flex-shrink: 0;
+  }
+  .console-toolbar input {
+    flex: 1;
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    color: #d4d4d4;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+  }
+  .console-toolbar input:focus { border-color: #0e639c; }
+  .console-toolbar select {
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    color: #d4d4d4;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+  }
+  .console-toolbar button {
+    background: #3c3c3c;
+    border: 1px solid #4c4c4c;
+    color: #d4d4d4;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .console-toolbar button:hover { background: #4c4c4c; }
+  .console-list {
+    flex: 1;
+    overflow-y: auto;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+  .log-entry {
+    padding: 6px 12px;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+  .log-entry:hover { background: #252526; }
+  .log-entry .log-level {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+    min-width: 44px;
+    text-align: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .log-level-log { background: #3c3c3c; color: #ccc; }
+  .log-level-info { background: #1a4a6e; color: #79c0ff; }
+  .log-level-warn { background: #5a4a1a; color: #e3b341; }
+  .log-level-error { background: #5a2d2d; color: #ff7b72; }
+  .log-level-debug { background: #2d4a2d; color: #7ee787; }
+  .log-level-trace { background: #3a3a3a; color: #aaa; }
+  .log-level-table,
+  .log-level-dir,
+  .log-level-group,
+  .log-level-groupEnd { background: #33336e; color: #a78bfa; }
+
+  .log-body { flex: 1; min-width: 0; }
+  .log-args {
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #d4d4d4;
+  }
+  .log-meta {
+    font-size: 10px;
+    color: #6e6e6e;
+    margin-top: 3px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .log-meta .log-location {
+    color: #8bb4d8;
+    cursor: pointer;
+  }
+  .log-meta .log-location:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>\u{1F41B} Findchange Debug Watcher</h1>
+  <h1>\u{1F41B} Findchange Debug</h1>
   <span class="status" id="status">Connecting...</span>
 </div>
-<div class="content" id="content">
+<div class="tabs" id="tabs">
+  <button class="tab hidden" id="tab-watcher" data-target="content-watcher">
+    Watcher <span class="tab-badge" id="watcher-count">0</span>
+  </button>
+  <button class="tab hidden" id="tab-console" data-target="content-console">
+    Console <span class="tab-badge" id="console-count">0</span>
+  </button>
+</div>
+<div class="content" id="content-watcher">
   <div class="empty">Waiting for state snapshots...</div>
+</div>
+<div class="content" id="content-console">
+  <div class="console-toolbar">
+    <select id="console-filter">
+      <option value="all">All levels</option>
+      <option value="log">Log</option>
+      <option value="info">Info</option>
+      <option value="warn">Warn</option>
+      <option value="error">Error</option>
+      <option value="debug">Debug</option>
+      <option value="trace">Trace</option>
+      <option value="table">Table</option>
+      <option value="dir">Dir</option>
+    </select>
+    <input type="text" id="console-search" placeholder="Filter logs..." />
+    <button id="console-clear">Clear</button>
+  </div>
+  <div class="console-list" id="console-list">
+    <div class="empty">No console output captured yet.</div>
+  </div>
 </div>
 </body>
 </html>`;
@@ -148,16 +326,60 @@ export function getDebugWindowHtml(): string {
 export function getDebugWindowScript(): string {
   const sourceStr = JSON.stringify(POST_MESSAGE_SOURCE);
   const channelStr = JSON.stringify(CHANNEL_NAME);
+  const featuresStr = JSON.stringify(debugStore.getFeatures());
   const stringifyStr = stringifyFn.toString();
 
   return `
     (function() {
       var SOURCE = ${sourceStr};
-      var contentEl = document.getElementById('content');
+      var FEATURES = ${featuresStr};
+      var contentWatcher = document.getElementById('content-watcher');
+      var contentConsole = document.getElementById('content-console');
+      var consoleList = document.getElementById('console-list');
+      var consoleFilter = document.getElementById('console-filter');
+      var consoleSearch = document.getElementById('console-search');
+      var consoleClearBtn = document.getElementById('console-clear');
       var statusEl = document.getElementById('status');
+      var tabWatcher = document.getElementById('tab-watcher');
+      var tabConsole = document.getElementById('tab-console');
+      var watcherCountEl = document.getElementById('watcher-count');
+      var consoleCountEl = document.getElementById('console-count');
       var lastMsg = Date.now();
       var stringifyFn = ${stringifyStr};
+      var activeTab = null;
 
+      // ---- Feature / Tab setup ----
+      function setupTabs() {
+        if (FEATURES.watcher) tabWatcher.classList.remove('hidden');
+        if (FEATURES.console) tabConsole.classList.remove('hidden');
+
+        // Default to the first available feature
+        if (FEATURES.watcher) switchTab('watcher');
+        else if (FEATURES.console) switchTab('console');
+
+        tabWatcher.addEventListener('click', function() { switchTab('watcher'); });
+        tabConsole.addEventListener('click', function() { switchTab('console'); });
+      }
+
+      function switchTab(name) {
+        activeTab = name;
+        tabWatcher.classList.toggle('active', name === 'watcher');
+        tabConsole.classList.toggle('active', name === 'console');
+        contentWatcher.classList.toggle('active', name === 'watcher');
+        contentConsole.classList.toggle('active', name === 'console');
+      }
+
+      setupTabs();
+
+      // ---- Console toolbar interactions ----
+      consoleClearBtn.addEventListener('click', function() {
+        capturedLogs = [];
+        renderConsole();
+      });
+      consoleFilter.addEventListener('change', renderConsole);
+      consoleSearch.addEventListener('input', renderConsole);
+
+      // ---- Watcher rendering (existing) ----
       function formatTimestamp(ts) {
         var d = new Date(ts);
         return d.toLocaleTimeString();
@@ -174,34 +396,30 @@ export function getDebugWindowScript(): string {
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       }
 
-      // Track fold state per state id, and last seen timestamp to detect changes
-      var foldState = {};  // id -> true (open) | false (closed)
-      var lastSeenTimestamp = {}; // id -> timestamp of last rendered value
-      var renderOrder = []; // array of ids in display order from last render
+      var foldState = {};
+      var lastSeenTimestamp = {};
+      var renderOrder = [];
       var snapshotCount = 0;
 
       function handleSnapshot(states) {
         lastMsg = Date.now();
         statusEl.textContent = 'Connected';
         statusEl.classList.remove('disconnected');
+        watcherCountEl.textContent = states ? states.length : 0;
 
         if (!states || states.length === 0) {
-          contentEl.innerHTML = '<div class="empty">No states being watched yet.</div>';
+          contentWatcher.innerHTML = '<div class="empty">No states being watched yet.</div>';
           lastSeenTimestamp = {};
           renderOrder = [];
           return;
         }
 
-        // Capture current fold states from existing DOM before re-render
-        var existingDetails = contentEl.querySelectorAll('details[data-id]');
+        var existingDetails = contentWatcher.querySelectorAll('details[data-id]');
         existingDetails.forEach(function(d) {
           var id = d.getAttribute('data-id');
           foldState[id] = d.hasAttribute('open');
         });
 
-        // Determine which states changed since last render by comparing timestamps.
-        // On first render (snapshotCount === 0), don't mark anything as changed
-        // to avoid a flash on initial load.
         var changedIds = {};
         if (snapshotCount > 0) {
           states.forEach(function(s) {
@@ -212,25 +430,19 @@ export function getDebugWindowScript(): string {
           });
         }
 
-        // Build a lookup of current states by id
         var stateById = {};
         states.forEach(function(s) { stateById[s.id] = s; });
 
-        // Sort: changed states go to top (sorted by timestamp desc = newest first),
-        // then unchanged states preserve their previous render order,
-        // then any new states that have no previous order go last.
         var changedList = states.filter(function(s) { return changedIds[s.id]; })
           .sort(function(a, b) { return b.timestamp - a.timestamp; });
         var changedIdsOrdered = changedList.map(function(s) { return s.id; });
 
         var unchangedIds = [];
-        // First: unchanged states that were in previous render order
         renderOrder.forEach(function(id) {
           if (stateById[id] && !changedIds[id]) {
             unchangedIds.push(id);
           }
         });
-        // Then: any remaining unchanged states not in previous order (new states)
         states.forEach(function(s) {
           if (!changedIds[s.id] && unchangedIds.indexOf(s.id) === -1) {
             unchangedIds.push(s.id);
@@ -240,25 +452,21 @@ export function getDebugWindowScript(): string {
         var sortedIds = changedIdsOrdered.concat(unchangedIds);
         var sorted = sortedIds.map(function(id) { return stateById[id]; }).filter(Boolean);
 
-        // Build new set of active ids
         var activeIds = {};
         var html = sorted.map(function(s) {
           activeIds[s.id] = true;
           var safe = stringifyFn(s.value);
-
-          // Default: new states start open
           if (!(s.id in foldState)) {
             foldState[s.id] = true;
           }
           var openAttr = foldState[s.id] ? ' open' : '';
-
           var escaped = escapeHtml(safe);
           var nameEsc = escapeHtml(s.name);
           var badge = getBadge(s.value);
           var changedMarker = changedIds[s.id] ? ' changed' : '';
           return '<details data-id="' + s.id + '"' + openAttr + ' class="' + changedMarker.trim() + '">' +
             '<summary>' +
-              '<span class="arrow">\u25B6</span>' +
+              '<span class="arrow">\\u25B6</span>' +
               '<span class="name">' + nameEsc + '</span>' +
               '<span class="badge">' + badge + '</span>' +
               (changedIds[s.id] ? '<span class="changed-dot"></span>' : '') +
@@ -267,20 +475,74 @@ export function getDebugWindowScript(): string {
             '<div class="timestamp">Updated: ' + formatTimestamp(s.timestamp) + '</div>' +
           '</details>';
         }).join('');
-        contentEl.innerHTML = html;
+        contentWatcher.innerHTML = html;
 
-        // Update lastSeenTimestamp and renderOrder
         states.forEach(function(s) {
           lastSeenTimestamp[s.id] = s.timestamp;
         });
         renderOrder = sortedIds;
-
         snapshotCount++;
 
-        // Clean up fold state for removed states
         Object.keys(foldState).forEach(function(id) {
           if (!activeIds[id]) delete foldState[id];
         });
+      }
+
+      // ---- Console rendering ----
+      var capturedLogs = [];
+
+      function handleLogs(logs) {
+        lastMsg = Date.now();
+        statusEl.textContent = 'Connected';
+        statusEl.classList.remove('disconnected');
+        capturedLogs = logs || [];
+        consoleCountEl.textContent = capturedLogs.length;
+        renderConsole();
+      }
+
+      function getFilteredLogs() {
+        var level = consoleFilter.value;
+        var query = consoleSearch.value.toLowerCase().trim();
+        return capturedLogs.filter(function(l) {
+          if (level !== 'all' && l.level !== level) return false;
+          if (query) {
+            var haystack = (l.args.join(' ') + ' ' + (l.location || '') + ' ' + l.level).toLowerCase();
+            if (haystack.indexOf(query) === -1) return false;
+          }
+          return true;
+        });
+      }
+
+      function renderConsole() {
+        var filtered = getFilteredLogs();
+        consoleCountEl.textContent = capturedLogs.length;
+        if (filtered.length === 0) {
+          consoleList.innerHTML = '<div class="empty">' +
+            (capturedLogs.length === 0 ? 'No console output captured yet.' : 'No logs match the filter.') +
+            '</div>';
+          return;
+        }
+
+        var html = filtered.map(function(l) {
+          var time = new Date(l.timestamp).toLocaleTimeString(undefined, { hour12: false }) +
+            '.' + String(l.timestamp % 1000).padStart(3, '0');
+          var args = l.args.map(escapeHtml).join(' ');
+          var loc = l.location ? escapeHtml(l.location) : '';
+          return '<div class="log-entry">' +
+            '<span class="log-level log-level-' + l.level + '">' + l.level + '</span>' +
+            '<div class="log-body">' +
+              '<div class="log-args">' + args + '</div>' +
+              '<div class="log-meta">' +
+                '<span>' + time + '</span>' +
+                (loc ? '<span class="log-location">' + loc + '</span>' : '') +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+
+        consoleList.innerHTML = html;
+        // Auto-scroll to bottom
+        consoleList.scrollTop = consoleList.scrollHeight;
       }
 
       function processMessage(data) {
@@ -288,6 +550,8 @@ export function getDebugWindowScript(): string {
         if (data.source && data.source !== SOURCE) return;
         if (data.type === 'snapshot') {
           handleSnapshot(data.states);
+        } else if (data.type === 'logs') {
+          handleLogs(data.logs);
         }
       }
 

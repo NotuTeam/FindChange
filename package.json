@@ -1,7 +1,7 @@
 {
   "name": "findchange",
-  "version": "0.1.1",
-  "description": "A React state watcher with a separate debug window for real-time state tracing during development",
+  "version": "0.2.0",
+  "description": "A React state watcher and console capture tool with a separate debug window for real-time state tracing and log monitoring during development",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.mjs",
+      "require": "./dist/server.js"
     }
   },
   "files": [
@@ -30,7 +35,10 @@
     "watcher",
     "devtools",
     "development",
-    "tracing"
+    "tracing",
+    "console",
+    "logger",
+    "ssr"
   ],
   "repository": {
     "type": "git",

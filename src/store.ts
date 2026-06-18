@@ -1,6 +1,7 @@
-import type { WatchedState, SnapshotMessage } from './types';
-import { CHANNEL_NAME, STORAGE_KEY, POST_MESSAGE_SOURCE } from './constants';
+import type { WatchedState, SnapshotMessage, LogsMessage, DebugFeatures } from './types';
+import { CHANNEL_NAME, STORAGE_KEY, FEATURES_KEY, POST_MESSAGE_SOURCE } from './constants';
 import { isDevelopment } from './utils';
+import { consoleCapture } from './console-capture';
 
 class DebugStore {
   private states = new Map<string, WatchedState>();
@@ -8,6 +9,7 @@ class DebugStore {
   private sessionId: string;
   private windowRef: Window | null = null;
   private onOpenChange: ((open: boolean) => void) | null = null;
+  private features: DebugFeatures = { watcher: false, console: false };
 
   constructor() {
     this.sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -17,11 +19,42 @@ class DebugStore {
     }
     if (typeof window !== 'undefined') {
       window.addEventListener('message', this.handlePostMessage);
+      this.loadFeatures();
     }
   }
 
   private isSupported(): boolean {
     return typeof window !== 'undefined' && 'BroadcastChannel' in window;
+  }
+
+  private loadFeatures(): void {
+    try {
+      const raw = sessionStorage.getItem(FEATURES_KEY);
+      if (raw) {
+        this.features = JSON.parse(raw) as DebugFeatures;
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  private persistFeatures(): void {
+    try {
+      sessionStorage.setItem(FEATURES_KEY, JSON.stringify(this.features));
+    } catch {
+      // ignore
+    }
+  }
+
+  /** Mark a feature as enabled. Called automatically by useDebugState / setupConsoleCapture. */
+  enableFeature(feature: 'watcher' | 'console'): void {
+    if (this.features[feature]) return;
+    this.features[feature] = true;
+    this.persistFeatures();
+  }
+
+  getFeatures(): DebugFeatures {
+    return { ...this.features };
   }
 
   private handleChannelMessage = (event: MessageEvent) => {
@@ -41,6 +74,7 @@ class DebugStore {
 
   set(id: string, name: string, value: unknown): void {
     if (!isDevelopment()) return;
+    this.enableFeature('watcher');
     this.states.set(id, { id, name, value, timestamp: Date.now() });
   }
 
@@ -55,29 +89,43 @@ class DebugStore {
 
   broadcast(): void {
     if (!isDevelopment()) return;
-    const message: SnapshotMessage = {
+
+    // Watcher states
+    const statesMessage: SnapshotMessage = {
       type: 'snapshot',
       states: this.getSnapshot(),
       sessionId: this.sessionId,
     };
 
-    // Method 1: BroadcastChannel (fallback / future-proofing)
-    if (this.channel) {
-      try {
-        this.channel.postMessage(message);
-      } catch {
-        // ignore
-      }
-    }
+    // Console logs
+    const logsMessage: LogsMessage = {
+      type: 'logs',
+      logs: consoleCapture.getLogs(),
+      sessionId: this.sessionId,
+    };
 
-    // Method 2: window.postMessage directly to popup (most reliable)
-    if (this.windowRef && !this.windowRef.closed) {
-      try {
-        this.windowRef.postMessage({ ...message, source: POST_MESSAGE_SOURCE }, '*');
-      } catch {
-        // ignore
+    const send = (msg: SnapshotMessage | LogsMessage): void => {
+      // Method 1: BroadcastChannel (fallback / future-proofing)
+      if (this.channel) {
+        try {
+          this.channel.postMessage(msg);
+        } catch {
+          // ignore
+        }
       }
-    }
+
+      // Method 2: window.postMessage directly to popup (most reliable)
+      if (this.windowRef && !this.windowRef.closed) {
+        try {
+          this.windowRef.postMessage({ ...msg, source: POST_MESSAGE_SOURCE }, '*');
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    send(statesMessage);
+    send(logsMessage);
   }
 
   setWindowRef(ref: Window | null): void {
